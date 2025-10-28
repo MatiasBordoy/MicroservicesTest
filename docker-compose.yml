@@ -1,0 +1,52 @@
+version: '3.9'
+
+services:
+  # ----------------------------
+  # SQL Server container
+  # ----------------------------
+  sqldb:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: employee_sql
+    environment:
+      SA_PASSWORD: "32991553"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+  # ----------------------------
+  # EmployeeService API
+  # ----------------------------
+  employeeservice.api:
+    build:
+      context: .
+      dockerfile: Services/EmployeeService/src/EmployeeService.Api/Dockerfile
+    container_name: employee_api
+    ports:
+      - "5001:8080"
+    # environment:
+    #   - ConnectionStrings__Default=Server=sqldb;Database=MicroservicesExample.EmployeeService;User Id=sa;Password=32991553;TrustServerCertificate=True;
+    depends_on:
+      - sqldb
+
+  # ----------------------------
+  # AuthService API
+  # ----------------------------
+  authservice.api:
+    build:
+      context: .
+      dockerfile: Services/AuthService/src/AuthService.Api/Dockerfile
+    container_name: auth_api
+    ports:
+      - "5002:8080"
+    # environment:
+    #   - ConnectionStrings__Default=Server=sqldb;Database=MicroservicesExample.AuthService;User Id=sa;Password=32991553;TrustServerCertificate=True;
+    depends_on:
+      - sqldb
+
+# ----------------------------
+# Shared volume
+# ----------------------------
+volumes:
+  sqlserver_data:
