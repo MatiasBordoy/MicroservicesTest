@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: employeeservice
+  namespace: lab-generic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: employeeservice
+  template:
+    metadata:
+      labels:
+        app: employeeservice
+    spec:
+      containers:
+        - name: employeeservice
+          image: employee-service.api:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Development"
+            - name: ConnectionStrings__Default
+              value: "Server=sqldb;Database=EmployeeServiceDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;"
+            - name: Redis__Host
+              value: "redis:6379"

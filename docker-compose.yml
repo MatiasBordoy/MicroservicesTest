@@ -1,0 +1,127 @@
+name: micro-services-example
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  # AuthService DB (PostgreSQL)
+  postgres_auth:
+    image: postgres:16
+    container_name: auth_postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: apppass
+      POSTGRES_DB: AuthServiceDb
+    ports:
+      - "54320:5432"
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    networks:
+      - microservices-net
+    restart: unless-stopped
+    
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+        PGADMIN_DEFAULT_EMAIL: admin@local.com
+        PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+        - "5050:80"
+    depends_on:
+        - postgres_auth
+    networks:
+        - microservices-net
+    restart: unless-stopped
+
+  # EmployeeService DB (SQL Server)
+  sqldb_employee:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: employee_sql
+    environment:
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "14330:1433"
+    volumes:
+      - sqlserver_employee_data:/var/opt/mssql
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  employeeservice.api:
+    image: employee-service.api:dev
+    build:
+      context: .
+      dockerfile: Services/EmployeeService/src/EmployeeService.Api/Dockerfile
+    container_name: employee_api
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - Redis__Host=redis:6379
+      - ConnectionStrings__Default=Server=sqldb_employee;Database=EmployeeServiceDb;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;
+      - Jwt__Key=THIS_IS_A_SUPER_SECRET_KEY_CHANGE_IT
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=MicroservicesExample
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      - redis
+      - rabbitmq
+      - sqldb_employee
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+  authservice.api:
+    image: auth-service.api:dev
+    build:
+      context: .
+      dockerfile: Services/AuthService/src/AuthService.Api/Dockerfile
+    container_name: auth_api
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - Redis__Host=redis:6379
+      - ConnectionStrings__Default=Host=postgres_auth;Port=5432;Database=AuthServiceDb;Username=app;Password=apppass
+      - Jwt__Key=THIS_IS_A_SUPER_SECRET_KEY_CHANGE_IT
+      - Jwt__Issuer=AuthService
+      - Jwt__Audience=MicroservicesExample
+      - RabbitMQ__Host=rabbitmq
+    depends_on:
+      - redis
+      - rabbitmq
+      - postgres_auth
+    networks:
+      - microservices-net
+    restart: unless-stopped
+
+volumes:
+  postgres_auth_data:
+  sqlserver_employee_data:
+
+networks:
+  microservices-net:
+    driver: bridge
