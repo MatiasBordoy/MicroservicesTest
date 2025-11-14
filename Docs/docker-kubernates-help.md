@@ -141,8 +141,8 @@ kubectl apply -f k8s/
 #### 1. Build imágenes
 
 ``` bash
-docker build -t authserviceapi:dev -f AuthService/src/AuthService.Api/Dockerfile .
-docker build -t employeeserviceapi:dev -f EmployeeService/src/EmployeeService.Api/Dockerfile .
+docker build -t auth-service.api:dev `-f Services/AuthService/src/AuthService.API/Dockerfile`
+docker build -t employee-service.api:dev `-f Services/EmployeeService/src/EmployeeService.API/Dockerfile`
 ```
 
 #### 2. Aplicar
